@@ -1,0 +1,27 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+
+# Environment
+venv/
+.env
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Data
+data/raw/
+data/processed/
+
+# Models
+*.pth
+*.pt
+weights/
+
+# Results
+results/checkpoints/
+
+# OS
+.DS_Store
+Thumbs.db
