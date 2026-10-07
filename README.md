@@ -63,16 +63,16 @@ The project compares:
 | Adapter-based Fine-tuning | Efficient model adaptation |
 
 
-## Dataset
+# Dataset
 
-Primary dataset:
+## BreakHis Breast Cancer Histopathology Dataset
 
-BreakHis Breast Cancer Histopathological Database
+This project uses the BreakHis dataset for binary breast cancer classification.
 
+The dataset is not included in this repository.
 
-Tasks:
+Users should download the dataset from the official source and organize it as:
 
-- Benign vs Malignant classification
 
 
 ## Evaluation
