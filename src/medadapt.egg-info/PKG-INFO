@@ -1,0 +1,145 @@
+Metadata-Version: 2.4
+Name: medadapt
+Version: 0.1.0
+Summary: Reproducible experiments for breast histopathology classification
+Requires-Python: >=3.10
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Requires-Dist: Pillow>=9.0
+Requires-Dist: scikit-learn>=1.1
+Provides-Extra: training
+Requires-Dist: torch>=2.0; extra == "training"
+Requires-Dist: torchvision>=0.15; extra == "training"
+Requires-Dist: timm>=0.9; extra == "training"
+Provides-Extra: analysis
+Requires-Dist: numpy>=1.23; extra == "analysis"
+Requires-Dist: pandas>=1.5; extra == "analysis"
+Requires-Dist: matplotlib>=3.6; extra == "analysis"
+Requires-Dist: seaborn>=0.12; extra == "analysis"
+Requires-Dist: grad-cam>=1.4; extra == "analysis"
+Provides-Extra: test
+Requires-Dist: pytest>=7.0; extra == "test"
+Dynamic: license-file
+
+# MedAdapt
+
+## Efficient Adaptation of Vision Foundation Models for Breast Cancer Histopathology Classification
+
+MedAdapt investigates compute-aware adaptation of visual foundation models for breast histopathology classification. The initial implementation focuses on reliable dataset metadata, patient-disjoint evaluation, and reproducible experiments.
+
+## Research direction
+
+The project will compare a conventional CNN baseline with frozen and parameter-efficiently adapted vision foundation models. The central evaluation dimensions are patient-level generalization, limited-label performance, magnification-dependent behavior, and computational cost.
+
+## Current implementation: Phase 1
+
+- Parse BreakHis filename metadata: binary label, subtype, patient identifier, magnification, and image sequence.
+- Audit image readability and directory/filename label consistency.
+- Optionally calculate SHA-256 hashes to identify byte-identical files.
+- Export a portable image manifest and audit summaries.
+- Generate deterministic patient-grouped cross-validation folds.
+
+The audit does not silently discard malformed records. Resolve all non-OK records before generating folds.
+
+## Dataset
+
+BreakHis is not distributed in this repository. Obtain it from the dataset provider and follow its terms of use and citation requirements.
+
+The audit recursively searches for PNG/JPG/JPEG images, including nested folder layouts. Filename metadata is parsed independently of directory structure.
+
+Expected filename structure:
+
+```text
+<procedure>_<B|M>_<subtype>-<patient-id>-<magnification>-<sequence>.<extension>
+```
+
+Example: `SOB_B_TA-14-4659-40-001.png`
+
+The patient identifier is retained as a grouping variable. Generated folds are image-level train/test records with patient-level disjointness: a patient's images must never occur in both partitions of the same fold.
+
+## Setup
+
+Python 3.10 or later:
+
+```bash
+python -m venv .venv
+# Windows PowerShell:
+.venv\Scripts\Activate.ps1
+# macOS/Linux:
+source .venv/bin/activate
+
+python -m pip install --upgrade pip
+python -m pip install -e ".[test]"
+```
+
+## Phase 1 workflow
+
+1. Download and extract BreakHis locally. Do not commit the dataset to Git.
+2. Run the audit:
+
+```bash
+python scripts/audit_breakhis.py --root data/BreakHis
+```
+
+3. For byte-identical duplicate detection, optionally calculate hashes:
+
+```bash
+python scripts/audit_breakhis.py --root data/BreakHis --hash-images
+```
+
+4. Inspect `outputs/dataset_audit/`, especially `summary.json`, `invalid_images.csv`, `unreadable_images.csv`, and `parent_class_mismatches.csv`.
+5. After resolving invalid metadata and confirming patient identifiers, generate folds:
+
+```bash
+python scripts/create_splits.py \
+  --manifest outputs/dataset_audit/manifest.csv \
+  --output outputs/splits/breakhis_5fold.csv \
+  --n-splits 5 --seed 42
+```
+
+The splitter rejects invalid metadata, patients with conflicting binary labels, and class counts with too few distinct patients for the requested number of folds.
+
+## Tests
+
+```bash
+python -m unittest discover -s tests -v
+```
+
+## Planned experiments
+
+| Experiment | Description |
+|---|---|
+| ResNet-50 | Conventional transfer-learning baseline |
+| DINOv2 linear probe | Frozen visual encoder with a trained classifier |
+| DINOv2 + LoRA/adapters | Parameter-efficient adaptation |
+
+These experiments are planned; no performance results should be inferred from the current repository state.
+
+## Evaluation plan
+
+Report accuracy, balanced accuracy, sensitivity, specificity, F1, ROC-AUC, and PR-AUC. Also report trainable parameters, peak memory, training time, and inference time. Analyze results overall and by magnification. Model selection must use training/validation patients only; the held-out test fold must not guide hyperparameter tuning.
+
+## Repository structure
+
+```text
+src/medadapt/       Dataset metadata and split utilities
+scripts/            Dataset audit and fold-generation commands
+tests/              Unit tests
+configs/            Planned experiment configurations
+outputs/            Local generated reports (not committed)
+```
+
+## Data and research integrity
+
+- Keep original dataset files outside version control.
+- Preserve patient-level separation in all evaluation.
+- Record random seeds and package versions.
+- Report all excluded or unparseable images.
+- Cite the original BreakHis dataset publication when presenting results.
+
+## Author
+
+Zahra Alipour  
+Biomedical Engineering | Computer Vision | Medical AI
+
+GitHub: https://github.com/ZahraAlipour703
