@@ -1,116 +1,122 @@
 # MedAdapt
+
 ## Efficient Adaptation of Vision Foundation Models for Breast Cancer Histopathology Classification
 
+MedAdapt investigates compute-aware adaptation of visual foundation models for breast histopathology classification. The initial implementation focuses on reliable dataset metadata, patient-disjoint evaluation, and reproducible experiments.
 
-## Overview
+## Research direction
 
-MedAdapt is a research-oriented project investigating the use of vision foundation models and parameter-efficient adaptation techniques for medical image analysis.
+The project will compare a conventional CNN baseline with frozen and parameter-efficiently adapted vision foundation models. The central evaluation dimensions are patient-level generalization, limited-label performance, magnification-dependent behavior, and computational cost.
 
-The project explores whether large-scale self-supervised visual representations can be efficiently adapted to breast cancer histopathology classification under limited computational resources.
+## Current implementation: Phase 1
 
+- Parse BreakHis filename metadata: binary label, subtype, patient identifier, magnification, and image sequence.
+- Audit image readability and directory/filename label consistency.
+- Optionally calculate SHA-256 hashes to identify byte-identical files.
+- Export a portable image manifest and audit summaries.
+- Generate deterministic patient-grouped cross-validation folds.
 
-## Research Question
+The audit does not silently discard malformed records. Resolve all non-OK records before generating folds.
 
-Can vision foundation models provide efficient and interpretable representations for medical image classification compared with conventional deep learning approaches?
+## Dataset
 
+BreakHis is not distributed in this repository. Obtain it from the dataset provider and follow its terms of use and citation requirements.
 
-## Motivation
+The audit recursively searches for PNG/JPG/JPEG images, including nested folder layouts. Filename metadata is parsed independently of directory structure.
 
-Medical imaging AI systems often require large annotated datasets and extensive computational resources.
+Expected filename structure:
 
-Recent vision foundation models have demonstrated strong transferability in computer vision tasks. This project investigates their potential for biomedical applications through efficient fine-tuning strategies.
+```text
+<procedure>_<B|M>_<subtype>-<patient-id>-<magnification>-<sequence>.<extension>
+```
 
+Example: `SOB_B_TA-14-4659-40-001.png`
 
-## Objectives
+The patient identifier is retained as a grouping variable. Generated folds are image-level train/test records with patient-level disjointness: a patient's images must never occur in both partitions of the same fold.
 
-- Establish a CNN-based baseline for breast histopathology classification.
-- Evaluate frozen vision foundation model representations.
-- Investigate parameter-efficient adaptation using lightweight adapters.
-- Analyze model decisions using explainable AI techniques.
+## Setup
 
+Python 3.10 or later:
 
-## Methodology
+```bash
+python -m venv .venv
+# Windows PowerShell:
+.venv\Scripts\Activate.ps1
+# macOS/Linux:
+source .venv/bin/activate
 
-Pipeline:
+python -m pip install --upgrade pip
+python -m pip install -e ".[test]"
+```
 
-Medical Image
+## Phase 1 workflow
 
-↓
+1. Download and extract BreakHis locally. Do not commit the dataset to Git.
+2. Run the audit:
 
-Vision Foundation Model Encoder
+```bash
+python scripts/audit_breakhis.py --root data/BreakHis
+```
 
-↓
+3. For byte-identical duplicate detection, optionally calculate hashes:
 
-Efficient Adaptation Module
+```bash
+python scripts/audit_breakhis.py --root data/BreakHis --hash-images
+```
 
-↓
+4. Inspect `outputs/dataset_audit/`, especially `summary.json`, `invalid_images.csv`, `unreadable_images.csv`, and `parent_class_mismatches.csv`.
+5. After resolving invalid metadata and confirming patient identifiers, generate folds:
 
-Classification Head
+```bash
+python scripts/create_splits.py \
+  --manifest outputs/dataset_audit/manifest.csv \
+  --output outputs/splits/breakhis_5fold.csv \
+  --n-splits 5 --seed 42
+```
 
-↓
+The splitter rejects invalid metadata, patients with conflicting binary labels, and class counts with too few distinct patients for the requested number of folds.
 
-Prediction + Explainability
+## Tests
 
+```bash
+python -m unittest discover -s tests -v
+```
 
-## Experiments
+## Planned experiments
 
-The project compares:
-
-| Approach | Description |
+| Experiment | Description |
 |---|---|
-| ResNet50 | Conventional CNN baseline |
-| DINOv2 Linear Probe | Frozen foundation model features |
-| Adapter-based Fine-tuning | Efficient model adaptation |
+| ResNet-50 | Conventional transfer-learning baseline |
+| DINOv2 linear probe | Frozen visual encoder with a trained classifier |
+| DINOv2 + LoRA/adapters | Parameter-efficient adaptation |
 
+These experiments are planned; no performance results should be inferred from the current repository state.
 
-# Dataset
+## Evaluation plan
 
-## BreakHis Breast Cancer Histopathology Dataset
+Report accuracy, balanced accuracy, sensitivity, specificity, F1, ROC-AUC, and PR-AUC. Also report trainable parameters, peak memory, training time, and inference time. Analyze results overall and by magnification. Model selection must use training/validation patients only; the held-out test fold must not guide hyperparameter tuning.
 
-This project uses the BreakHis dataset for binary breast cancer classification.
+## Repository structure
 
-The dataset is not included in this repository.
+```text
+src/medadapt/       Dataset metadata and split utilities
+scripts/            Dataset audit and fold-generation commands
+tests/              Unit tests
+configs/            Planned experiment configurations
+outputs/            Local generated reports (not committed)
+```
 
-Users should download the dataset from the official source and organize it as:
+## Data and research integrity
 
-
-
-## Evaluation
-
-Metrics:
-
-- Accuracy
-- Precision
-- Recall
-- F1-score
-- ROC-AUC
-
-
-## Explainability
-
-Model interpretation will be investigated using Grad-CAM visualization to analyze regions influencing predictions.
-
-
-## Technologies
-
-- Python
-- PyTorch
-- Torchvision
-- DINOv2
-- Scikit-learn
-- OpenCV
-
-
-## Project Status
-
- Under active development
-
+- Keep original dataset files outside version control.
+- Preserve patient-level separation in all evaluation.
+- Record random seeds and package versions.
+- Report all excluded or unparseable images.
+- Cite the original BreakHis dataset publication when presenting results.
 
 ## Author
 
-Zahra Alipour
-
+Zahra Alipour  
 Biomedical Engineering | Computer Vision | Medical AI
 
-GitHub:
-https://github.com/ZahraAlipour703
+GitHub: https://github.com/ZahraAlipour703
