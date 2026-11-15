@@ -1,0 +1,19 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "medadapt"
+version = "0.1.0"
+description = "Reproducible experiments for breast histopathology classification"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = ["Pillow>=9.0", "scikit-learn>=1.1"]
+
+[project.optional-dependencies]
+training = ["torch>=2.0", "torchvision>=0.15", "timm>=0.9"]
+analysis = ["numpy>=1.23", "pandas>=1.5", "matplotlib>=3.6", "seaborn>=0.12", "grad-cam>=1.4"]
+test = ["pytest>=7.0"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
