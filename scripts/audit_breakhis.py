@@ -17,7 +17,7 @@ from medadapt.datasets.metadata import find_image_files, find_parent_class, pars
 FIELDS = [
     "image_path", "filename", "biopsy_procedure", "tumor_class_code",
     "label", "class_name", "subtype_code", "subtype_name", "patient_id",
-    "magnification", "sequence_number", "parent_class", "parse_status",
+    "magnification", "sequence_number", "file_extension", "parent_class", "parse_status",
     "parse_error", "image_readable", "image_width", "image_height", "sha256",
 ]
 
