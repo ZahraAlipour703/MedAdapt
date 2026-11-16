@@ -82,6 +82,44 @@ The splitter rejects invalid metadata, patients with conflicting binary labels, 
 python -m unittest discover -s tests -v
 ```
 
+## Phase 2: ResNet-18 baseline
+
+Install the training dependencies:
+
+```powershell
+python -m pip install -e ".[training]"
+```
+
+Run one outer fold with ImageNet-pretrained ResNet-18 and patient/class-balanced
+sampling:
+
+```powershell
+python scripts/train_resnet18.py \
+  --root "data/BreakHis/histology_slides/breast" \
+  --fold-csv "outputs/splits/breakhis_binary_5fold.csv" \
+  --fold 1 --sampling patient_class_balanced \
+  --epochs 20 --batch-size 8 --device auto
+```
+
+Use `--sampling image_uniform` for the sampling ablation. The validation
+patients select the checkpoint by patient-level log loss; the outer test fold
+is evaluated only after checkpoint selection. Both image-level and patient-level
+metrics and prediction CSVs are saved under `outputs/experiments/`.
+
+For a short CPU pipeline smoke test (not a reportable experiment), use:
+
+```powershell
+python scripts/train_resnet18.py \
+  --root "data/BreakHis/histology_slides/breast" \
+  --fold-csv "outputs/splits/breakhis_binary_5fold.csv" \
+  --fold 1 --batch-size 4 --epochs 1 --device cpu \
+  --no-pretrained --max-train-batches 2 --max-eval-batches 2
+```
+
+The smoke-test batch limits intentionally produce incomplete validation/test
+predictions and must never be used as scientific results. The default model
+uses TorchVision ImageNet-1K weights, which may be downloaded on first use.
+
 ## Planned experiments
 
 | Experiment | Description |
