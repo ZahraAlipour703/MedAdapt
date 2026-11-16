@@ -180,8 +180,10 @@ def main() -> None:
         "epochs_completed": len(history),
         "training_and_validation_seconds": elapsed,
         "test_inference_seconds": inference_seconds,
-        "test_images_per_second": len(image_predictions) / inference_seconds
-            if inference_seconds else None,
+        "test_images_per_second": (
+            len(image_predictions) / inference_seconds
+            if image_predictions is not None and inference_seconds else None
+        ),
         "parameters": count_parameters(model),
         "image_level_test_metrics": image_metrics,
         "patient_level_test_metrics": patient_metrics,
