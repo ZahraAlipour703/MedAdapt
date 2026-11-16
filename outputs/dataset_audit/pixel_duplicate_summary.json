@@ -1,0 +1,10 @@
+{
+  "images_scanned": 7909,
+  "unique_pixel_hashes": 7784,
+  "duplicate_groups": 125,
+  "images_in_duplicate_groups": 250,
+  "redundant_copies": 125,
+  "cross_subtype_duplicate_groups": 123,
+  "cross_class_duplicate_groups": 0,
+  "folder_code_mismatch_count": 0
+}
