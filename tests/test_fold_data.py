@@ -6,6 +6,7 @@ import unittest
 from medadapt.datasets.fold_data import (
     load_outer_fold_rows,
     split_training_validation,
+    patient_class_balanced_weights,
 )
 
 
@@ -24,6 +25,43 @@ def make_rows():
 
 
 class FoldDataTests(unittest.TestCase):
+
+    def test_patient_class_balanced_weights_equalize_patient_and_class_mass(self):
+        rows = make_rows()
+        # Make one patient contribute substantially more images.
+        rows.extend([
+            {
+                "image_path": f"0-0/extra-{i}.png",
+                "label": "0",
+                "patient_id": "0-0",
+            }
+            for i in range(8)
+        ])
+
+        weights = patient_class_balanced_weights(rows)
+        self.assertAlmostEqual(sum(weights), 1.0)
+
+        patient_mass = {}
+        class_mass = {}
+        for row, weight in zip(rows, weights):
+            patient = row["patient_id"]
+            label = int(row["label"])
+            patient_mass[patient] = patient_mass.get(patient, 0.0) + weight
+            class_mass[label] = class_mass.get(label, 0.0) + weight
+
+        for label in (0, 1):
+            masses = [
+                mass for patient, mass in patient_mass.items()
+                if int(patient.split("-")[0]) == label
+            ]
+            self.assertTrue(all(abs(mass - masses[0]) < 1e-12 for mass in masses))
+            self.assertAlmostEqual(class_mass[label], 0.5)
+
+    def test_patient_class_balanced_weights_require_both_classes(self):
+        rows = [row for row in make_rows() if row["label"] == "1"]
+        with self.assertRaisesRegex(ValueError, "both classes"):
+            patient_class_balanced_weights(rows)
+
     def test_inner_split_is_patient_disjoint_and_complete(self):
         rows = make_rows()
         train, validation = split_training_validation(
