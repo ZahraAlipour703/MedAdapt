@@ -82,7 +82,12 @@ def main() -> None:
         model.parameters(), lr=args.learning_rate, weight_decay=args.weight_decay
     )
     criterion = nn.CrossEntropyLoss()
+    smoke_test = (
+        args.max_train_batches is not None or args.max_eval_batches is not None
+    )
     run_name = f"resnet18_fold{args.fold}_{args.sampling}_seed{args.seed}"
+    if smoke_test:
+        run_name += "_smoke"
     run_dir = Path(args.output) / run_name
     run_dir.mkdir(parents=True, exist_ok=True)
     best_path = run_dir / "best_model.pt"
@@ -139,15 +144,31 @@ def main() -> None:
     checkpoint = torch.load(best_path, map_location=device, weights_only=False)
     model.load_state_dict(checkpoint["model_state_dict"])
 
-    image_predictions, inference_seconds = predict(model, loaders["test"], device)
-    patient_predictions = aggregate_patient_predictions(image_predictions)
-    image_metrics = binary_classification_metrics(image_predictions)
-    patient_metrics = binary_classification_metrics(patient_predictions)
+    inference_seconds = None
+    image_predictions = None
+    patient_predictions = None
+    image_metrics = None
+    patient_metrics = None
+
+    if smoke_test:
+        print(
+            "SMOKE TEST: outer test inference skipped; "
+            "limited training/validation runs are not reportable.",
+            flush=True,
+        )
+    else:
+        image_predictions, inference_seconds = predict(
+            model, loaders["test"], device
+        )
+        patient_predictions = aggregate_patient_predictions(image_predictions)
+        image_metrics = binary_classification_metrics(image_predictions)
+        patient_metrics = binary_classification_metrics(patient_predictions)
+        write_csv(run_dir / "test_image_predictions.csv", image_predictions)
+        write_csv(run_dir / "test_patient_predictions.csv", patient_predictions)
 
     write_csv(run_dir / "history.csv", history)
-    write_csv(run_dir / "test_image_predictions.csv", image_predictions)
-    write_csv(run_dir / "test_patient_predictions.csv", patient_predictions)
     results = {
+        "is_smoke_test": smoke_test,
         "experiment": "resnet18_transfer_learning",
         "fold": args.fold,
         "sampling_strategy": args.sampling,
@@ -175,7 +196,7 @@ def main() -> None:
     (run_dir / "results.json").write_text(
         json.dumps(results, indent=2), encoding="utf-8"
     )
-    print("\n=== FINAL TEST RESULTS ===")
+    print("\n=== SMOKE TEST SUMMARY ===" if smoke_test else "\n=== FINAL TEST RESULTS ===")
     print(json.dumps(results, indent=2))
     print(f"Artifacts: {run_dir.resolve()}")
 
