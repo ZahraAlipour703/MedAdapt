@@ -163,6 +163,52 @@ def split_training_validation(
     return inner_train, validation
 
 
+
+def patient_class_balanced_weights(
+    records: Iterable[dict[str, Any]],
+) -> list[float]:
+    """Return per-image weights giving equal mass to each patient and class.
+
+    The weights sum to one. Each binary class receives total weight 0.5,
+    and each patient within a class receives equal total weight, regardless
+    of how many images that patient contributes.
+    """
+    rows = [dict(row) for row in records]
+    _validate_records(rows, "patient-balanced sampler input")
+
+    patient_image_counts: dict[str, int] = {}
+    patient_labels: dict[str, int] = {}
+    for row in rows:
+        patient = str(row["patient_id"])
+        label = int(row["label"])
+        patient_image_counts[patient] = patient_image_counts.get(patient, 0) + 1
+        patient_labels[patient] = label
+
+    patients_per_class = {
+        label: sum(value == label for value in patient_labels.values())
+        for label in (0, 1)
+    }
+    if any(count == 0 for count in patients_per_class.values()):
+        raise ValueError(
+            "Patient-class-balanced sampling requires patients from both classes."
+        )
+
+    weights = []
+    for row in rows:
+        patient = str(row["patient_id"])
+        label = int(row["label"])
+        weights.append(
+            1.0 / (
+                2.0
+                * patients_per_class[label]
+                * patient_image_counts[patient]
+            )
+        )
+
+    return weights
+
+
+
 def build_fold_dataloaders(
     root_dir: str | Path,
     fold_csv_path: str | Path,
@@ -174,12 +220,17 @@ def build_fold_dataloaders(
     validation_fold: int = 0,
     seed: int = 42,
     pin_memory: bool | None = None,
+    sampling_strategy: str = "patient_class_balanced",
 ) -> dict[str, Any]:
     """Build train/validation/test DataLoaders for one outer fold."""
     if batch_size < 1:
         raise ValueError("batch_size must be positive.")
     if num_workers < 0:
         raise ValueError("num_workers cannot be negative.")
+    if sampling_strategy not in {"patient_class_balanced", "image_uniform"}:
+        raise ValueError(
+            "sampling_strategy must be 'patient_class_balanced' or 'image_uniform'."
+        )
 
     try:
         import torch
@@ -222,10 +273,26 @@ def build_fold_dataloaders(
         "pin_memory": pin_memory,
         "persistent_workers": num_workers > 0,
     }
-    return {
-        "train": DataLoader(
+
+    if sampling_strategy == "patient_class_balanced":
+        sample_weights = patient_class_balanced_weights(train_rows)
+        sampler = torch.utils.data.WeightedRandomSampler(
+            weights=torch.as_tensor(sample_weights, dtype=torch.double),
+            num_samples=len(train_dataset),
+            replacement=True,
+            generator=generator,
+        )
+        train_loader = DataLoader(
+            train_dataset, sampler=sampler, shuffle=False, **common
+        )
+    else:
+        train_loader = DataLoader(
             train_dataset, shuffle=True, generator=generator, **common
-        ),
+        )
+
+    return {
+        "sampling_strategy": sampling_strategy,
+        "train": train_loader,
         "validation": DataLoader(
             validation_dataset, shuffle=False, **common
         ),
