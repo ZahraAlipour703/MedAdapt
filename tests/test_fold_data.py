@@ -88,7 +88,7 @@ class FoldDataTests(unittest.TestCase):
             **rows[0],
             "image_path": "leakage/copy.png",
             "fold": "1",
-            "split": "test",
+            "split": "train",
         })
 
         with tempfile.TemporaryDirectory() as temp_dir:
