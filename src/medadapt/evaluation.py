@@ -8,7 +8,6 @@ import numpy as np
 from sklearn.metrics import (
     accuracy_score,
     average_precision_score,
-    balanced_accuracy_score,
     confusion_matrix,
     f1_score,
     log_loss,
@@ -83,9 +82,16 @@ def binary_classification_metrics(
     y_pred = (y_prob >= threshold).astype(np.int64)
     tn, fp, fn, tp = confusion_matrix(y_true, y_pred, labels=[0, 1]).ravel()
 
-    sensitivity = float(tp / (tp + fn)) if tp + fn else 0.0
-    specificity = float(tn / (tn + fp)) if tn + fp else 0.0
-    both_classes = len(np.unique(y_true)) == 2
+    positive_support = int((y_true == 1).sum())
+    negative_support = int((y_true == 0).sum())
+    predicted_positive = int((y_pred == 1).sum())
+    sensitivity = float(tp / positive_support) if positive_support else None
+    specificity = float(tn / negative_support) if negative_support else None
+    both_classes = positive_support > 0 and negative_support > 0
+    balanced_accuracy = (
+        float((sensitivity + specificity) / 2.0)
+        if both_classes else None
+    )
 
     return {
         "n_samples": int(len(rows)),
@@ -93,10 +99,10 @@ def binary_classification_metrics(
         "n_malignant": int((y_true == 1).sum()),
         "threshold": float(threshold),
         "accuracy": float(accuracy_score(y_true, y_pred)),
-        "balanced_accuracy": float(balanced_accuracy_score(y_true, y_pred)),
+        "balanced_accuracy": balanced_accuracy,
         "sensitivity": sensitivity,
         "specificity": specificity,
-        "precision": float(tp / (tp + fp) if tp + fp else 0.0),
+        "precision": float(tp / predicted_positive) if predicted_positive else None,
         "f1": float(f1_score(y_true, y_pred, zero_division=0)),
         "roc_auc": float(roc_auc_score(y_true, y_prob)) if both_classes else None,
         "average_precision": (
