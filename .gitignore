@@ -25,3 +25,5 @@ results/checkpoints/
 # OS
 .DS_Store
 Thumbs.db
+# Generated local reports and experiment outputs
+outputs/
