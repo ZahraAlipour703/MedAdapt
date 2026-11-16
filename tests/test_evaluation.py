@@ -46,6 +46,8 @@ class EvaluationTests(unittest.TestCase):
         metrics = binary_classification_metrics(rows)
         self.assertIsNone(metrics["roc_auc"])
         self.assertIsNone(metrics["average_precision"])
+        self.assertIsNone(metrics["balanced_accuracy"])
+        self.assertIsNone(metrics["specificity"])
 
 
 if __name__ == "__main__":
