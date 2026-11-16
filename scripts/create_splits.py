@@ -21,7 +21,7 @@ def main() -> None:
 
     if not args.manifest.exists():
         parser.error(f"Manifest not found: {args.manifest}")
-    with args.manifest.open("r", newline="", encoding="utf-8") as handle:
+    with args.manifest.open("r", newline="", encoding="utf-8-sig") as handle:
         rows = list(csv.DictReader(handle))
     try:
         split_rows = generate_grouped_folds(rows, args.n_splits, args.seed)
